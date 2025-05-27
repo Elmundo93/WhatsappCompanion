@@ -1,7 +1,7 @@
 '''supabase/sync.py'''
 from app.supabase.supabase_client import supabase
 from app.db.models import insert_user
-from app.vector_store import add_vector, delete_vector  # NEU
+from app.vector_store import add_vector, delete_vector
 from sentence_transformers import SentenceTransformer
 import numpy as np
 

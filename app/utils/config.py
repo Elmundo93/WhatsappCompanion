@@ -20,3 +20,4 @@ DB_PATH = os.getenv("DB_PATH", "data/chat.db")  # fallback
 
 # Optional
 PORT = int(os.getenv("PORT", 5000))
+OPENAI_API_KEY=os.getenv("OPENAI_API_KEY")

@@ -4,6 +4,8 @@ from app.db.chat_history import save_message, get_history
 from app.twilio.dialog_engine import get_next_response
 from app.utils.twilio_client import send_whatsapp_reply
 from app.utils.utils import is_valid_whatsapp_request
+from app.services.session_service import has_user_synced, set_user_synced
+from app.supabase.sync import sync_users_from_supabase
 
 twilio_webhook = Blueprint("twilio_webhook", __name__)
 
@@ -17,6 +19,12 @@ def handle_twilio_webhook():
 
     if not user_number or not user_message:
         return "Missing data", 400
+
+    # 👉 Einmalige Synchronisation bei Erstkontakt
+    if not has_user_synced(user_number):
+        print(f"🔄 Synchronisiere Supabase für {user_number}")
+        sync_users_from_supabase()
+        set_user_synced(user_number)
 
     # Verlauf speichern
     save_message(user_number, "inbound", user_message)

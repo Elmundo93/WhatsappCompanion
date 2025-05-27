@@ -1,4 +1,4 @@
-# app/vector_store.py
+# app/vector_store_services.py
 from app.vector.local_store import LocalVectorStore
 from app.vector.remote_store import RemoteVectorStore
 import os

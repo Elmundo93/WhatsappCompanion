@@ -20,11 +20,14 @@ def init_whatsapp_table():
 
     # Session-Tabelle
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS whatsapp_sessions (
-            user_number TEXT PRIMARY KEY,
-            state TEXT NOT NULL,
-            last_updated TEXT NOT NULL
-        )
+    
+ CREATE TABLE IF NOT EXISTS whatsapp_sessions (
+    user_number TEXT PRIMARY KEY,
+    state TEXT NOT NULL,
+    last_updated TEXT NOT NULL,
+    has_synced INTEGER DEFAULT 0
+);
+
     """)
 
     conn.commit()

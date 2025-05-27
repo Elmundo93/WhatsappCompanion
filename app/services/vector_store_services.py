@@ -1,4 +1,4 @@
-# app/services/vector_store.py
+# app/services/vector_store_services.py
 
 import json
 import numpy as np
@@ -6,18 +6,17 @@ from app.db.models import get_all_users
 from app.utils.utils import get_embedding_model
 
 def get_all_embeddings():
-    """
-    Gibt eine Liste von dicts mit Namen, Bio und numpy-Embedding zurück.
-    """
     users = get_all_users()
     return [
         {
             "name": u["name"],
             "bio": u["bio"],
-            "embedding": np.array(json.loads(u["embedding"]))
+            "embedding": u["embedding"]
         }
-        for u in users if u.get("embedding")
+        for u in users
+        if u.get("embedding") is not None
     ]
+
 def generate_embedding_for_text(text: str):
     model = get_embedding_model()
     vec = model.encode(text)
@@ -26,12 +25,17 @@ def generate_embedding_for_text(text: str):
 def cosine_similarity(a, b):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
-def find_top_matches(query: str, top_k=5):
+def find_top_matches(query: str, top_k=5, min_score=0.5):
     query_vec = generate_embedding_for_text(query)
     candidates = get_all_embeddings()
     scored = [
-        (c["name"], cosine_similarity(query_vec, c["embedding"]))
+        {
+            "name": c["name"],
+            "bio": c["bio"],
+            "score": cosine_similarity(query_vec, c["embedding"])
+        }
         for c in candidates
     ]
-    scored.sort(key=lambda x: x[1], reverse=True)
-    return [f"{name} (Score: {score:.2f})" for name, score in scored[:top_k]]
+    filtered = [c for c in scored if c["score"] >= min_score]
+    filtered.sort(key=lambda x: x["score"], reverse=True)
+    return filtered[:top_k]
