@@ -63,6 +63,8 @@ TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 VECTOR_DB_PATH=data/users_embeddings.index
 DB_PATH=data/chat.db
 PORT=5050
+OPENAI_API_KEY=...
+
 ```
 
 ## 💬 WhatsApp Integration
