@@ -7,10 +7,10 @@ from app.utils.config import OPENAI_API_KEY
 openai.api_key = OPENAI_API_KEY
 
 
-def generate_help_post(user_input: str, mode: str = "suchen") -> str:
+def generate_help_post(user_input: str, mode: str = "suchen") -> tuple[str, int]:
     """
     Erstellt einen kurzen, höflichen Posttext auf Basis der Eingabe.
-    mode: "suchen" oder "bieten"
+    Gibt zusätzlich die Anzahl der verwendeten Tokens zurück.
     """
     role = "suchenden" if mode == "suchen" else "helfenden"
 
@@ -29,7 +29,7 @@ def generate_help_post(user_input: str, mode: str = "suchen") -> str:
         temperature=0.7,
     )
 
+    post_text = response.choices[0].message.content.strip()
+    token_count = response.usage.total_tokens
 
-
-
-    return response.choices[0].message.content.strip()
+    return post_text, token_count
