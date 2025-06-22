@@ -1,7 +1,7 @@
 from typing import List, Dict
 from app.services.session_service import get_user_state, set_user_state, reset_user_state
 from app.services.vector_store_services import find_top_matches
-from app.services.post_service import generate_help_post
+from app.services.post_service.openai import generate_help_post
 
 
 def get_next_response(user_number: str, history: List[Dict[str, str]]) -> str:

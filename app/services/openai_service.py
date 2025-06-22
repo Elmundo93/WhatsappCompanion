@@ -29,4 +29,7 @@ def generate_help_post(user_input: str, mode: str = "suchen") -> str:
         temperature=0.7,
     )
 
+
+
+
     return response.choices[0].message.content.strip()
