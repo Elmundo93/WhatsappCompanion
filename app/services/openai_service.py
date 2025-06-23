@@ -1,17 +1,9 @@
-# app/services/text_generation.py
+from openai import OpenAI
+from app.utils.config import OPENAI_API_KEY_MASTERSCHOOL
 
-import os
-import openai
-from app.utils.config import OPENAI_API_KEY
-
-openai.api_key = OPENAI_API_KEY
-
+client = OpenAI(api_key=OPENAI_API_KEY_MASTERSCHOOL)
 
 def generate_help_post(user_input: str, mode: str = "suchen") -> tuple[str, int]:
-    """
-    Erstellt einen kurzen, höflichen Posttext auf Basis der Eingabe.
-    Gibt zusätzlich die Anzahl der verwendeten Tokens zurück.
-    """
     role = "suchenden" if mode == "suchen" else "helfenden"
 
     system_prompt = (
@@ -19,8 +11,8 @@ def generate_help_post(user_input: str, mode: str = "suchen") -> tuple[str, int]
         f"Der Text soll im Namen eines {role} Nutzers geschrieben sein, maximal 2–3 Sätze lang, höflich, gut verständlich und darf Emoji enthalten."
     )
 
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_input},
