@@ -1,7 +1,8 @@
+import json
 from typing import List, Dict
 from app.services.session_service import get_user_state, set_user_state, reset_user_state
 from app.services.vector_store_services import find_top_matches
-from app.services.post_service.openai import generate_help_post
+from app.services.openai_agent import generate_agent_response, generate_online_suggestions
 
 
 def get_next_response(user_number: str, history: List[Dict[str, str]]) -> str:
@@ -23,65 +24,82 @@ def get_next_response(user_number: str, history: List[Dict[str, str]]) -> str:
 
     elif state == "awaiting_choice":
         if last_input == "1":
-            set_user_state(user_number, "awaiting_help_desc")
-            return "Super! Bitte beschreibe kurz, wobei du Unterstützung brauchst."
+            set_user_state(user_number, "agent_mode_help")
+            return "Okay! Bitte beschreibe dein Anliegen so genau wie möglich."
         elif last_input == "2":
-            set_user_state(user_number, "awaiting_offer_input")
-            return "Klasse! Erzähl uns gern etwas über deine Fähigkeiten oder wie du helfen kannst."
+            set_user_state(user_number, "agent_mode_offer")
+            return "Super! Was möchtest du anbieten und in welchem Bereich kannst du helfen?"
         elif last_input == "3":
             reset_user_state(user_number)
             return "Dein Profil ist aktuell leer. Du kannst später Infos hinterlegen."
         else:
             return (
-                "Das habe ich leider nicht verstanden. Antworte mit:\n"
+                "Bitte antworte mit:\n"
                 "1 - Ich suche Hilfe\n"
                 "2 - Ich biete Hilfe\n"
                 "3 - Mein Profil anzeigen"
             )
 
-    elif state == "awaiting_help_desc":
+    elif state in ["agent_mode_help", "agent_mode_offer"]:
+        mode = "suchen" if state == "agent_mode_help" else "bieten"
         matches = find_top_matches(last_input, top_k=5)
-        set_user_state(user_number, "offer_post_suggestion")
+
         set_user_state(user_number + "_query", last_input)
+        set_user_state(user_number + "_matches", json.dumps(matches))
+        set_user_state(user_number + "_mode", mode)
+        set_user_state(user_number, "awaiting_online_search_confirmation")
 
-        if not matches:
-            post_text = generate_help_post(last_input, mode="suchen")
-            reset_user_state(user_number)
-            return (
-                f"Ich habe gerade niemanden gefunden, der direkt helfen kann.\n\n"
-                f"Aber hier wäre ein Vorschlag für dein Hilfegesuch:\n\n📝 *{post_text}*"
-            )
-
-        response = "Hier sind passende Helfer:innen:\n\n"
-        response += "\n".join(f"- {m}" for m in matches)
-        response += "\n\nMöchtest du zusätzlich ein Hilfegesuch posten? Antworte mit *ja* oder *nein*."
+        response = generate_agent_response(history, matches, mode=mode)
+        response += (
+            "\n\n🔍 Möchtest du, dass ich zusätzlich online nach passenden Lösungen suche?\n"
+            "Antworte mit *ja* oder *nein*."
+        )
         return response
 
-    elif state == "offer_post_suggestion":
-        if last_input.lower() in ["ja", "yes", "gern", "ok"]:
-            original_input = get_user_state(user_number + "_query") or ""
-            post_text = generate_help_post(original_input, mode="suchen")
-            reset_user_state(user_number)
-            return f"Alles klar! Hier ist dein Post-Vorschlag:\n\n📝 *{post_text}*"
+    elif state == "awaiting_online_search_confirmation":
+        if last_input.lower() in ["ja", "gern", "bitte", "okay", "ok"]:
+            set_user_state(user_number, "awaiting_location_for_online_search")
+            return (
+                "Super! 📍 Sag mir bitte kurz, wo du dich ungefähr befindest "
+                "(Stadtteil, PLZ oder Stadtname). So kann ich gezielter nach Hilfe suchen."
+            )
         else:
             reset_user_state(user_number)
-            return "Kein Problem! Du kannst dich jederzeit wieder melden, wenn du Hilfe brauchst. 👋"
+            return "Alles klar 😊 Wenn du später doch noch Hilfe brauchst, schreib einfach wieder. 👋"
 
-    elif state == "awaiting_offer_input":
-        set_user_state(user_number, "show_offer_post")
-        set_user_state(user_number + "_query", last_input)
-        return "Möchtest du, dass ich daraus einen passenden Post-Text für dein Hilfsangebot erstelle? (ja/nein)"
+    elif state == "awaiting_location_for_online_search":
+        location = last_input.strip()
+        query = get_user_state(user_number + "_query") or ""
+        mode = get_user_state(user_number + "_mode") or "suchen"
 
-    elif state == "show_offer_post":
-        if last_input.lower() in ["ja", "yes", "bitte", "ok"]:
-            original_input = get_user_state(user_number + "_query") or ""
-            post_text = generate_help_post(original_input, mode="bieten")
+        set_user_state(user_number, "followup_mode")
+        set_user_state(user_number + "_followup_count", "0")
+
+        suggestions = generate_online_suggestions(query=query, location=location, mode=mode)
+        return suggestions + "\n\n💬 Hast du noch eine weitere Frage?"
+
+    elif state == "followup_mode":
+        count = int(get_user_state(user_number + "_followup_count") or "0")
+
+        if count >= 2:
             reset_user_state(user_number)
-            return f"Super! Hier ist ein Vorschlag für dein Hilfsangebot:\n\n📝 *{post_text}*"
+            return (
+                "Ich hoffe, ich konnte dir ein gutes Stück weiterhelfen 🙏\n\n"
+                "Falls du noch offene Fragen hast oder persönliche Unterstützung brauchst, "
+                "melde dich gern direkt bei *Wir helfen aus e.V.*:\n\n"
+                "📞 Tel: 0173 7523673\n"
+                "📧 Mail: Lemont-Kim@Wir-helfen-aus.de\n"
+                "🌐 Website: https://www.wir-helfen-aus.de\n\n"
+                "Alles Gute und bis bald! 💛"
+            )
         else:
-            reset_user_state(user_number)
-            return "Alles klar. Danke für dein Angebot! Wir melden uns bei Bedarf. 💪"
+            updated_count = count + 1
+            set_user_state(user_number + "_followup_count", str(updated_count))
+            set_user_state(user_number, "followup_mode")
+
+            followup_response = generate_agent_response(history, [], mode="suchen")
+            return followup_response + "\n\n💬 Hast du noch eine weitere Frage?"
 
     else:
         reset_user_state(user_number)
-        return "Etwas ist schiefgelaufen. Lass uns nochmal von vorne starten. Antworte mit 1, 2 oder 3."
+        return "Etwas ist schiefgelaufen. Lass uns nochmal starten. Schreibe einfach 1, 2 oder 3."

@@ -60,3 +60,6 @@ def register_routes(app):
     # ➕ Neue Blueprints registrieren
     app.register_blueprint(search_api)
     app.register_blueprint(twilio_webhook)
+
+
+

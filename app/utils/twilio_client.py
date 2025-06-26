@@ -5,6 +5,7 @@ from app.utils.config import TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATS
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
 def send_whatsapp_reply(to_number: str, message: str):
+    print(f"📤 Sende Antwort an {to_number}: {message}")
     client.messages.create(
         from_=TWILIO_WHATSAPP_NUMBER,
         to=to_number,
